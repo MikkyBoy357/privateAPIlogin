@@ -1,3 +1,5 @@
+// Hi Julia, I think you forgot to wrap the FutureBuilder in a Scaffold() line 26
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -21,30 +23,36 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Foodora helper',
       theme: ThemeData(primaryColor: Color.fromARGB(255, 156, 54, 198)),
-      home: FutureBuilder(
-          future: appTokenOrEmpty,
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) return CircularProgressIndicator();
-            if (snapshot.data != "") {
-              var str = snapshot.data;
-              var token = str.split(".");
+      home: Scaffold(
+        body: Center(
+          child: FutureBuilder(
+              future: appTokenOrEmpty,
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return CircularProgressIndicator();
+                if (snapshot.data != "") {
+                  var str = snapshot.data;
+                  var token = str.split(".");
 
-              if (token.length != 6) {
-                return LoginPage();
-              } else {
-                var payload = json.decode(ascii.decode(base64.decode(base64
-                    .normalize(snapshot.data()[appTokenOrEmpty.toString()]))));
-                if (DateTime.fromMillisecondsSinceEpoch(payload['exp'] * 1000)
-                    .isAfter(DateTime.now())) {
-                  return HomePage(str, payload);
+                  if (token.length != 6) {
+                    return LoginPage();
+                  } else {
+                    var payload = json.decode(ascii.decode(base64.decode(
+                        base64.normalize(
+                            snapshot.data()[appTokenOrEmpty.toString()]))));
+                    if (DateTime.fromMillisecondsSinceEpoch(
+                            payload['exp'] * 1000)
+                        .isAfter(DateTime.now())) {
+                      return HomePage(str, payload);
+                    } else {
+                      return LoginPage();
+                    }
+                  }
                 } else {
                   return LoginPage();
                 }
-              }
-            } else {
-              return LoginPage();
-            }
-          }),
+              }),
+        ),
+      ),
     );
   }
 }
@@ -75,43 +83,44 @@ class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text("Log In"),
+      appBar: AppBar(
+        title: Text("Log In"),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: <Widget>[
+            TextField(
+              controller: _emailnameController,
+              decoration: InputDecoration(labelText: 'email'),
+            ),
+            TextField(
+              controller: _passwordController,
+              obscureText: true,
+              decoration: InputDecoration(labelText: 'Password'),
+            ),
+            FlatButton(
+              onPressed: () async {
+                var email = _emailnameController.text;
+                var password = _passwordController.text;
+                var token = await attemptLogIn(email, password);
+                if (token != null) {
+                  storage.write(key: token, value: 'token');
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => HomePage.fromBase64(token)));
+                } else {
+                  displayDialog(context, "An Error Occurred",
+                      "No account was found matching that username and password");
+                }
+              },
+              child: Text("Log In"),
+            ),
+          ],
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            children: <Widget>[
-              TextField(
-                controller: _emailnameController,
-                decoration: InputDecoration(labelText: 'email'),
-              ),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: InputDecoration(labelText: 'Password'),
-              ),
-              FlatButton(
-                  onPressed: () async {
-                    var email = _emailnameController.text;
-                    var password = _passwordController.text;
-                    var token = await attemptLogIn(email, password);
-                    if (token != null) {
-                      storage.write(key: token, value: 'token');
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  HomePage.fromBase64(token)));
-                    } else {
-                      displayDialog(context, "An Error Occurred",
-                          "No account was found matching that username and password");
-                    }
-                  },
-                  child: Text("Log In")),
-            ],
-          ),
-        ));
+      ),
+    );
   }
 }
 
@@ -130,26 +139,29 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text("Secret Data Screen")),
+        appBar: AppBar(
+          title: Text("Secret Data Screen"),
+        ),
         body: Center(
           child: FutureBuilder(
-              future: http.read(
-                  "https://api-courier.skipthedishes.com/v2/couriers/$id",
-                  headers: {
-                    "Transfer-Encoding": "chunked",
-                    "app-token": "decff1f4-fd24-4e6b-8edd-4f20df798e9b"
-                  }),
-              builder: (context, snapshot) => snapshot.hasData
-                  ? Column(
-                      children: <Widget>[
-                        Text("${payload['name']}, here's the data:"),
-                        Text(snapshot.data,
-                            style: Theme.of(context).textTheme.bodyText1)
-                      ],
-                    )
-                  : snapshot.hasError
-                      ? Text("An error occurred")
-                      : CircularProgressIndicator()),
+            future: http.read(
+                "https://api-courier.skipthedishes.com/v2/couriers/$id",
+                headers: {
+                  "Transfer-Encoding": "chunked",
+                  "app-token": "decff1f4-fd24-4e6b-8edd-4f20df798e9b"
+                }),
+            builder: (context, snapshot) => snapshot.hasData
+                ? Column(
+                    children: <Widget>[
+                      Text("${payload['name']}, here's the data:"),
+                      Text(snapshot.data,
+                          style: Theme.of(context).textTheme.bodyText1)
+                    ],
+                  )
+                : snapshot.hasError
+                    ? Text("An error occurred")
+                    : CircularProgressIndicator(),
+          ),
         ),
       );
 }
